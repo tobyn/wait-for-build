@@ -1,0 +1,11 @@
+{
+  "name": "wait-for-build",
+  "version": "1.0.0",
+  "author": "Tobyn Baugher <tobynb@gmail.com>",
+  "main": "wait-for-build.js",
+  "dependencies": {
+    "gaze": "^0.5.1",
+    "globule": "^0.2.0",
+    "lodash": "^2.4.1"
+  }
+}
