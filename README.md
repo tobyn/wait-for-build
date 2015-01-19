@@ -75,7 +75,7 @@ arguments.
 
 ### `waitForBuild.gulp(task)`
 
-Returns a task that executes the given gulp command in a child process.
+Returns a task that executes the given gulp task in a child process.
 
 
 ### `waitForBuild.plainTextErrors`
