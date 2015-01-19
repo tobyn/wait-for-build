@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "author": "Tobyn Baugher <tobynb@gmail.com>",
   "main": "wait-for-build.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tobyn/wait-for-build.git"
+  },
   "dependencies": {
     "gaze": "^0.5.1",
     "globule": "^0.2.0",
