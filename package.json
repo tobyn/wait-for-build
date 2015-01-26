@@ -2,7 +2,7 @@
   "name": "wait-for-build",
   "version": "1.0.0",
   "author": "Tobyn Baugher <tobynb@gmail.com>",
-  "main": "wait-for-build.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/tobyn/wait-for-build.git"

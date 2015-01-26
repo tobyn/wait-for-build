@@ -1,0 +1,11 @@
+{
+  "globalstrict": true,
+  "globals": {
+    "console": false,
+    "exports": true,
+    "module": false,
+    "process": false,
+    "require": false,
+    "setImmediate": false
+  }
+}
