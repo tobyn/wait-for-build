@@ -3,6 +3,7 @@
 var glob = require("globule").isMatch,
     adaptLogger = require("./log").adapt,
     Mapper = require("./Mapper"),
+    GazeBuildManager = require("./GazeBuildManager"),
     TaskBuildManager = require("./task/TaskBuildManager"),
     gulp = require("./task").gulp,
     middlewareFactory = require("./middleware").factory;
@@ -10,19 +11,27 @@ var glob = require("globule").isMatch,
 module.exports = createMiddleware;
 
 function createMiddleware() {
-  var log = adaptLogger(console,"debug"),
-      nlog = adaptLogger(undefined,"debug"),
-      paths,
+  var blog = adaptLogger(console,"debug"),
       mapper = new Mapper(glob);
 
-  paths = "";
-  mapper.map(paths,new TaskBuildManager("Jade",log,gulp("jade"),1));
+  map("HTML",gulp("html"),"","*.jade");
 
-  paths = "**/*.css";
-  mapper.map(paths,new TaskBuildManager("CSS",log,gulp("css"),1));
+  map("CSS",gulp("css"),
+    "**/*.css",
+    ["*.styl","components/**/*.styl"]);
 
-  paths = ["**/*.js","**/*.js.map"];
-  mapper.map(paths,new TaskBuildManager("JS",log,gulp("js"),3));
+  map("JS",gulp("js"),
+    ["**/*.js","**/*.js.map"],
+    ["*.jsx","components/**/*.jsx"]);
 
   return middlewareFactory(mapper);
+
+
+  function map(label, task, paths, watch) {
+    var gazeLog = blog.sub("[" + label + "] (watch)"),
+        gulpLog = blog.sub("[" + label + "] (gulp)"),
+        gulpBm = new TaskBuildManager(gulpLog,task,1);
+
+    mapper.map(paths,new GazeBuildManager(gazeLog,watch,gulpBm));
+  }
 }

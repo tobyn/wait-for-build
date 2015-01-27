@@ -9,12 +9,10 @@ var _ = require("lodash"),
 
 module.exports = TaskBuildManager;
 
-function TaskBuildManager(label, log, task, concurrency) {
+function TaskBuildManager(log, task, concurrency) {
   var m = this,
       builds = [],
       nextBuild = createBuild();
-
-  log = log.sub("[" + label + "]");
 
   m.fresh = fresh;
   m.invalidate = invalidate;
@@ -25,8 +23,6 @@ function TaskBuildManager(label, log, task, concurrency) {
 
 
   function fresh(path, callback) {
-    log.debug("Received a request for a fresh",JSON.stringify(path));
-
     nextBuild.callbacks.push(callback);
 
     if (concurrency > 0 && builds.length >= concurrency)
@@ -36,7 +32,10 @@ function TaskBuildManager(label, log, task, concurrency) {
   }
 
   function invalidate() {
-    var r, l = builds.length;
+    var l = builds.length;
+    if (l === 0) return;
+
+    var r;
     if (l === 1)
       r = "a build";
     else
