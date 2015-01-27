@@ -6,7 +6,7 @@ var browserify = require("browserify"),
     Mapper = require("./Mapper"),
     GazeBuildManager = require("./GazeBuildManager"),
     TaskBuildManager = require("./task/TaskBuildManager"),
-    WatchifyBuildMapper = require("./WatchifyBuildMapper"),
+    WatchifyBuildMapper = require("./watchify/WatchifyBuildMapper"),
     gulp = require("./task").gulp,
     middlewareFactory = require("./middleware").factory;
 
