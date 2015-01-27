@@ -26,8 +26,8 @@ function middleware(mapper, req, res, next) {
     next();
 }
 
-function getRelativePath(uri) {
-  var m = uri.match(/\/([^?;]+)/);
+function getRelativePath(absolutePathAndQuery) {
+  var m = absolutePathAndQuery.match(/\/([^?;]+)/);
   if (m)
     return m[1];
   else

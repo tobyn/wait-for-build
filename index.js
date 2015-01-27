@@ -10,21 +10,19 @@ var glob = require("globule").isMatch,
 module.exports = createMiddleware;
 
 function createMiddleware() {
-  var log,
+  var log = adaptLogger(console,"debug"),
+      nlog = adaptLogger(undefined,"debug"),
       paths,
       mapper = new Mapper(glob);
 
-  log = adaptLogger(console,"debug",["Jade"]);
   paths = "";
-  mapper.map(paths,new TaskBuildManager(log,gulp("jade"),1));
+  mapper.map(paths,new TaskBuildManager("Jade",log,gulp("jade"),1));
 
-  log = adaptLogger(console,"error",["CSS"]);
   paths = "**/*.css";
-  mapper.map(paths,new TaskBuildManager(log,gulp("css"),1));
+  mapper.map(paths,new TaskBuildManager("CSS",log,gulp("css"),1));
 
-  log = adaptLogger(console,"debug",["JS"]);
   paths = ["**/*.js","**/*.js.map"];
-  mapper.map(paths,new TaskBuildManager(log,gulp("js"),3));
+  mapper.map(paths,new TaskBuildManager("JS",log,gulp("js"),3));
 
   return middlewareFactory(mapper);
 }

@@ -4,22 +4,37 @@ var _ = require("lodash"),
     noop = _.noop;
 
 
+var LEVELS = ["debug", "info", "warn", "error"];
+
+
+var nullLogger = exports.nullLogger = {
+  sub: function() { return nullLogger; }
+};
+
+LEVELS.forEach(function(l) {
+  nullLogger[l] = noop;
+});
+
+
 exports.adapt = adapt;
 
-function adapt(logger, level, prefix) {
-  return new ConsoleLogger(logger,level,prefix);
+function adapt(logger, level) {
+  if (logger)
+    return new ConsoleLogger(logger,level,[]);
+  else
+    return nullLogger;
 }
 
 
-exports.ConsoleLogger = ConsoleLogger;
 
-var LEVELS = ["debug", "info", "warn", "error"];
+exports.ConsoleLogger = ConsoleLogger;
 
 function ConsoleLogger(console, level, prefixElements) {
   var log = this,
       on = false;
 
   this.sub = sub;
+
 
   LEVELS.forEach(function(l) {
     if (l === level)
@@ -35,10 +50,8 @@ function ConsoleLogger(console, level, prefixElements) {
     var method = console[level] || console.log;
 
     var prefix = _.clone(prefixElements);
-    prefix.unshift(level);
-    prefix = prefix.map(function(s) {
-      return "[" + s + "]";
-    }).join(" ");
+    prefix.unshift(level.toUpperCase());
+    prefix = prefix.join(" ");
 
     log[level] = _.bind(method,console,prefix);
   }
