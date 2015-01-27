@@ -59,10 +59,11 @@ function TaskBuildManager(label, log, task, concurrency) {
     log.info(progress("Build succeeded",1));
 
     if (position > 0) {
+      var r;
       if (position === 1)
-        var r = "an earlier build";
+        r = "an earlier build";
       else
-        var r = position + " earlier builds";
+        r = position + " earlier builds";
 
       log.debug("Ignoring",r,"due to successful build");
     }
