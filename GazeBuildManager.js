@@ -45,7 +45,13 @@ function GazeBuildManager(log, paths, manager) {
   }
 
   function invalidate() {
-    if (state === FRESH) state = STALE;
+    if (state === FRESH) {
+      log.info("Rebuilding on next request");
+      state = STALE;
+    } else if (state === BUILDING) {
+      log.info("Current build became obsolete");
+    }
+
     manager.invalidate();
   }
 
@@ -56,6 +62,8 @@ function GazeBuildManager(log, paths, manager) {
     state = FRESH;
     blocked = [];
     lastError = err;
+
+    log.debug("Build is fresh");
 
     unblocked.forEach(function(callback) {
       callback(err);

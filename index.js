@@ -1,10 +1,12 @@
 "use strict";
 
-var glob = require("globule").isMatch,
+var browserify = require("browserify"),
+    glob = require("globule").isMatch,
     adaptLogger = require("./log").adapt,
     Mapper = require("./Mapper"),
     GazeBuildManager = require("./GazeBuildManager"),
     TaskBuildManager = require("./task/TaskBuildManager"),
+    WatchifyBuildManager = require("./WatchifyBuildManager"),
     gulp = require("./task").gulp,
     middlewareFactory = require("./middleware").factory;
 
@@ -19,6 +21,17 @@ function createMiddleware() {
   map("CSS",gulp("css"),
     "**/*.css",
     ["*.styl","components/**/*.styl"]);
+
+  var log = blog.sub("[main.js]");
+  mapper.map("main.js",new WatchifyBuildManager(log,factory));
+
+  function factory() {
+    return browserify({
+      entries: ["./main"],
+      extensions: [".jsx"],
+      debug: true
+    }).transform(require("6to5ify"));
+  }
 
   map("JS",gulp("js"),
     ["**/*.js","**/*.js.map"],

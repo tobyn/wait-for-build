@@ -21,9 +21,18 @@ function middleware(mapper, req, res, next) {
       build = mapper.get(path);
 
   if (build)
-    build.fresh(path,next);
+    build.fresh(path,freshened);
   else
     next();
+
+  function freshened(err, respond) {
+    if (err)
+      next(err);
+    else if (respond)
+      respond(res);
+    else
+      next();
+  }
 }
 
 function getRelativePath(absolutePathAndQuery) {
