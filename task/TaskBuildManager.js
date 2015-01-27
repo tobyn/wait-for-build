@@ -4,7 +4,6 @@ var _ = require("lodash"),
     noop = _.noop,
     uuid = require("node-uuid"),
     log = require("../log"),
-    errorStack = require("../error").stack,
     TaskBuild = require("./TaskBuild");
 
 module.exports = TaskBuildManager;
@@ -77,7 +76,7 @@ function TaskBuildManager(log, task, concurrency) {
   function buildFailed(build, err) {
     var position = untrack(build);
 
-    log.error(progress("Build failed",1) + ":\n" + errorStack(err));
+    log.error(progress("Build failed",1));
 
     var len = builds.length;
     if (position < len) {

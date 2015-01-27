@@ -6,7 +6,7 @@ var browserify = require("browserify"),
     Mapper = require("./Mapper"),
     GazeBuildManager = require("./GazeBuildManager"),
     TaskBuildManager = require("./task/TaskBuildManager"),
-    WatchifyBuildManager = require("./WatchifyBuildManager"),
+    WatchifyBuildMapper = require("./WatchifyBuildMapper"),
     gulp = require("./task").gulp,
     middlewareFactory = require("./middleware").factory;
 
@@ -22,20 +22,16 @@ function createMiddleware() {
     "**/*.css",
     ["*.styl","components/**/*.styl"]);
 
-  var log = blog.sub("[main.js]");
-  mapper.map("main.js",new WatchifyBuildManager(log,factory));
+  var log = blog.sub("[JS]");
+  mapper.map("**/*.js",new WatchifyBuildMapper(log,factory));
 
-  function factory() {
+  function factory(path) {
     return browserify({
-      entries: ["./main"],
+      entries: ["./" + path],
       extensions: [".jsx"],
       debug: true
     }).transform(require("6to5ify"));
   }
-
-  map("JS",gulp("js"),
-    ["**/*.js","**/*.js.map"],
-    ["*.jsx","components/**/*.jsx"]);
 
   return middlewareFactory(mapper);
 

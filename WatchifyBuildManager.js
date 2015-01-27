@@ -1,8 +1,7 @@
 "use strict";
 
 var _ = require("lodash"),
-    watchify = require("watchify"),
-    errorStack = require("./error").stack;
+    watchify = require("watchify");
 
 module.exports = WatchifyBuildManager;
 
@@ -19,6 +18,7 @@ function WatchifyBuildManager(log, browserifyFactory) {
 
   this.fresh = fresh;
   this.invalidate = invalidate;
+  this.close = close;
 
   function fresh(path, callback) {
     var pathStr = JSON.stringify(path);
@@ -45,6 +45,10 @@ function WatchifyBuildManager(log, browserifyFactory) {
     touch();
   }
 
+  function close() {
+    wify.close();
+  }
+
 
   function createBundle() {
     var w = watchify(browserifyFactory());
@@ -62,7 +66,7 @@ function WatchifyBuildManager(log, browserifyFactory) {
     state = FRESH;
 
     if (err) {
-      log.error("Build failed",par(version) + ":\n" + errorStack(err));
+      log.error("Build failed",par(version));
       cache = [err];
     } else {
       log.info("Build succeeded",par(version));
