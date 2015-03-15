@@ -1,46 +1,50 @@
 "use strict";
 
-var browserify = require("browserify"),
-    glob = require("globule").isMatch,
-    adaptLogger = require("./log").adapt,
-    Mapper = require("./Mapper"),
-    GazeBuildManager = require("./GazeBuildManager"),
-    TaskBuildManager = require("./task/TaskBuildManager"),
-    WatchifyBuildMapper = require("./watchify/WatchifyBuildMapper"),
-    gulp = require("./task").gulp,
-    middlewareFactory = require("./middleware").factory;
+var adaptLogger = require("./log").adapt,
+    OnDemandBuilder = require("./OnDemandBuilder");
 
-module.exports = createMiddleware;
+module.exports = builderManager;
 
-function createMiddleware() {
-  var blog = adaptLogger(console,"debug"),
-      mapper = new Mapper(glob);
+module.exports.middleware = middleware;
 
-  map("HTML",gulp("html"),"","*.jade");
 
-  map("CSS",gulp("css"),
-    "**/*.css",
-    ["*.styl","components/**/*.styl"]);
+function builderManager(options) {
+  options = normalizeOptions(options);
 
-  var log = blog.sub("[JS]");
-  mapper.map("**/*.js",new WatchifyBuildMapper(log,factory));
+  var all = [],
+      log = options.log;
 
-  function factory(path) {
-    return browserify({
-      entries: ["./" + path],
-      extensions: [".jsx"],
-      debug: true
-    }).transform(require("6to5ify"));
+  add.rebuild = rebuild;
+
+  return add;
+
+  function add(label, factory) {
+    options.log = log.sub("[" + label + "]");
+
+    var builder = factory(options);
+
+    // The factory made a task rather than a builder
+    if (typeof builder === "function")
+      builder = new OnDemandBuilder(builder,options.log);
+
+    all.push(builder);
+
+    return middleware.bind(null,builder);
   }
 
-  return middlewareFactory(mapper);
-
-
-  function map(label, task, paths, watch) {
-    var gazeLog = blog.sub("[" + label + "] (watch)"),
-        gulpLog = blog.sub("[" + label + "] (gulp)"),
-        gulpBm = new TaskBuildManager(gulpLog,task,1);
-
-    mapper.map(paths,new GazeBuildManager(gazeLog,watch,gulpBm));
+  function rebuild() {
+    all.forEach(function(builder) {
+      builder.rebuild();
+    });
   }
+}
+
+function normalizeOptions(options) {
+  if (!options) options = {};
+  options.log = adaptLogger(options);
+  return options;
+}
+
+function middleware(builder, req, res, next) {
+  builder.wait(next);
 }

@@ -1,2 +1,2 @@
 lint:
-	@jshint *.js task/*.js
+	@jshint *.js

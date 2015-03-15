@@ -1,64 +1,90 @@
 "use strict";
 
-var _ = require("lodash"),
-    noop = _.noop;
-
-
-var LEVELS = ["debug", "info", "warn", "error"];
-
-
-var nullLogger = exports.nullLogger = {
-  sub: function() { return nullLogger; }
-};
-
-LEVELS.forEach(function(l) {
-  nullLogger[l] = noop;
-});
+var LEVELS = ["debug", "info", "warn", "error"],
+    hasConsole = typeof console !== "undefined",
+    slice = Array.prototype.slice;
 
 
 exports.adapt = adapt;
 
-function adapt(logger, level) {
-  if (logger)
-    return new ConsoleLogger(logger,level,[]);
-  else
-    return nullLogger;
+function adapt(options) {
+  var log = options.log,
+      level = options.logLevel || "error";
+
+  if (!log)
+    return NOOP_LOGGER;
+
+  if (hasConsole && log === console)
+    log = new ConsoleLogger(level);
+  
+  return new PrefixLogger(log,level,[]);
 }
 
+
+function noop() { }
+
+var baseMethods = {};
+
+LEVELS.forEach(function(l) {
+  baseMethods[l] = noop;
+});
+
+
+var NOOP_LOGGER = Object.create(baseMethods);
+
+NOOP_LOGGER.sub = function() { return NOOP_LOGGER; };
 
 
 exports.ConsoleLogger = ConsoleLogger;
 
-function ConsoleLogger(console, level, prefixElements) {
-  var log = this,
-      on = false;
+function ConsoleLogger(level) {
+  var index = LEVELS.indexOf(level),
+      len = LEVELS.length,
+      l;
 
-  this.sub = sub;
+  while (index < len) {
+    l = LEVELS[index];
 
-
-  LEVELS.forEach(function(l) {
-    if (l === level)
-      on = true;
-
-    if (on)
-      proxy(l);
+    if (console[l])
+      this[l] = console[l].bind(console);
     else
-      log[l] = noop;
-  });
+      this[l] = console.log.bind(console);
 
-  function proxy(level) {
-    var method = console[level] || console.log;
-
-    var prefix = _.clone(prefixElements);
-    prefix.unshift(level.toUpperCase());
-    prefix = prefix.join(" ");
-
-    log[level] = _.bind(method,console,prefix);
-  }
-
-
-  function sub() {
-    var newPrefix = prefixElements.concat(_.flatten(arguments));
-    return new ConsoleLogger(console,level,newPrefix);
+    index++;
   }
 }
+
+ConsoleLogger.prototype = Object.create(baseMethods);
+
+
+exports.PrefixLogger = PrefixLogger;
+
+function PrefixLogger(baseLogger, level, prefix) {
+  prefix.unshift(baseLogger,null);
+
+  this.level = level;
+  this.prefix = prefix;
+
+  var index = LEVELS.indexOf(level),
+      len = LEVELS.length;
+
+  while (index < len) {
+    var l = LEVELS[index];
+
+    prefix[1] = l.toUpperCase();
+    this[l] = Function.bind.apply(baseLogger[l],prefix);
+
+    index++;
+  }
+}
+
+PrefixLogger.prototype = Object.create(baseMethods);
+
+PrefixLogger.prototype.sub = function() {
+  var p = this.prefix,
+      np = p.slice(2);
+
+  np.push.apply(np,slice.call(arguments));
+
+  return new PrefixLogger(p[0],this.level,np);
+};

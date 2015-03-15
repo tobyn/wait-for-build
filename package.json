@@ -8,10 +8,10 @@
     "url": "https://github.com/tobyn/wait-for-build.git"
   },
   "dependencies": {
-    "browserify": "^8.1.1",
+    "browserify": "^9.0.3",
     "gaze": "^0.5.1",
     "globule": "^0.2.0",
-    "lodash": "^2.4.1",
-    "watchify": "^2.2.1"
+    "lodash": "^3.5.0",
+    "watchify": "^2.4.0"
   }
 }
