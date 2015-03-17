@@ -1,21 +1,53 @@
 "use strict";
 
 var defaults = require("lodash/object/defaults"),
+    last = require("lodash/array/last"),
     rest = require("lodash/array/rest"),
     spawn = require("child_process").spawn,
+    watchGlob = require("glob-watcher"),
+    normalizeOptions = require("./common").normalizeOptions,
     Builder = require("./Builder");
 
 module.exports = factory;
 module.exports.run = run;
 
 
-function factory(command/*, args... */) {
-  var args = rest(arguments);
+function factory(command/*, args..., [options] */) {
+  var args = rest(arguments),
+      options = last(args);
 
-  return function(options) {
-    var log = options.log.sub("(" + command + ")");
-    return run.bind(null,command,args,log);
-  };
+  if (typeof options !== "object")
+    options = {};
+  else
+    args.pop();
+
+  options = normalizeOptions(options);
+
+  var debug = options.debug,
+      log = debug.bind(null,"(" + command + ")"),
+      task = run.bind(null,command,args,log),
+      builder = new Builder(task,options.eager,debug),
+      rebuild = builder.rebuild;
+
+  if (options.watch) {
+    watchGlob(options.watch,function() {
+      debug("Watched files changed");
+      rebuild();
+    });
+
+    return justWait.bind(null,builder.wait);
+  } else {
+    return rebuildThenWait.bind(null,rebuild,builder.wait);
+  }
+}
+
+function justWait(wait, req, res, next) {
+  wait(next);
+}
+
+function rebuildThenWait(rebuild, wait, req, res, next) {
+  rebuild();
+  wait(next);
 }
 
 
@@ -25,7 +57,7 @@ function run(command, args, log, callback) {
       env = process.env,
       envPath = env.PATH;
 
-  log.debug("Running",command,args.join(" "));
+  log("Running","`" + command,args.join(" ") + "`");
 
   env = defaults({
     PATH: "node_modules/.bin:" + envPath
@@ -48,7 +80,7 @@ function run(command, args, log, callback) {
 
   
   function stop(cancelledCallback) {
-    log.debug("Killing process");
+    log("Killing process");
     callback = cancelledCallback;
     child.kill("SIGINT");
   }
@@ -56,7 +88,7 @@ function run(command, args, log, callback) {
   
   function exit(code) {
     if (code === 0) {
-      log.debug("Success");
+      log("Success");
       callback();
     } else {
       var err = new Error(command + " exited with error status " + code);

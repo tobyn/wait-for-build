@@ -1,8 +1,7 @@
 "use strict";
 
-var browserify = require("browserify"),
-    defaults = require("lodash/object/defaults"),
-    watchify = require("watchify"),
+var defaults = require("lodash/object/defaults"),
+    normalizeOptions = require("./common").normalizeOptions,
     Builder = require("./Builder");
 
 var REQUIRED_BROWSERIFY_OPTIONS = {
@@ -11,47 +10,67 @@ var REQUIRED_BROWSERIFY_OPTIONS = {
   fullPaths: true
 };
 
-module.exports = factory;
-module.exports.WatchifyBuilder = WatchifyBuilder;
+module.exports = initialize;
 
 
-function factory(configure) {
-  var bundle = configure(browserifyProxy);
-
-  return function(options) {
-    return new WatchifyBuilder(bundle,options.eager,options.log);
-  };
+function initialize(browserify, watchify) {
+  return factory.bind(null,browserify,watchify);
 }
 
-function browserifyProxy(options) {
-  if (Array.isArray(options))
-    options = { entries: options };
+function factory(browserify, watchify, configure, options) {
+  options = normalizeOptions(options);
 
-  defaults(options,REQUIRED_BROWSERIFY_OPTIONS);
+  var debug = options.debug,
+      bify = configure(browserifyProxy),
+      wify = watchify(bify),
+      builder = new Builder(bundle,options.eager,debug),
+      rebuild = builder.rebuild,
+      wait = builder.wait;
 
-  return browserify(options);
-}
+  wify.on("update",updated);
 
-
-function WatchifyBuilder(bundle, eager, log) {
-  var w = this.watchify = watchify(bundle);
-
-  Builder.call(this,this.bundle.bind(this),eager,log);
-
-  w.on("update",this.updated.bind(this));
-
-  w.on("bytes",function(bytes) {
-    log.debug("Bundle generated (" + bytes,"bytes)");
+  wify.on("bytes",function(bytes) {
+    debug("Bundle generated (" + bytes,"bytes)");
   });
+
+  return middleware;
+
+
+  function middleware(req, res, next) {
+    wait(function(err, buf) {
+      if (err)
+        next(err);
+      else
+        sendJS(res, buf);
+    });
+  }
+
+  function sendJS(res, buf) {
+    res.writeHead(200,{
+      "Content-Type": "application/javascript",
+      "Content-Length": buf.length
+    });
+
+    res.end(buf);
+  }
+
+
+  function browserifyProxy(options) {
+    if (Array.isArray(options))
+      options = { entries: options };
+
+    defaults(options,REQUIRED_BROWSERIFY_OPTIONS);
+
+    return browserify(options);
+  }
+
+  function bundle(callback) {
+    debug("Browserifying");
+    wify.bundle(callback);
+  }
+
+  function updated(ids) {
+    debug("Module changes:",ids.join(", "));
+    rebuild();
+  }
 }
-
-WatchifyBuilder.prototype = Object.create(Builder.prototype);
-
-WatchifyBuilder.prototype.bundle = function(callback) {
-  this.log.debug("Browserifying");
-  this.watchify.bundle(callback);
-};
-
-WatchifyBuilder.prototype.updated = function(ids) {
-  this.log.debug("Module changes:",ids.join(", "));
-};

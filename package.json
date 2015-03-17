@@ -2,16 +2,12 @@
   "name": "wait-for-build",
   "version": "1.0.0",
   "author": "Tobyn Baugher <tobynb@gmail.com>",
-  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/tobyn/wait-for-build.git"
   },
   "dependencies": {
-    "browserify": "^9.0.3",
-    "gaze": "^0.5.1",
-    "globule": "^0.2.0",
-    "lodash": "^3.5.0",
-    "watchify": "^2.4.0"
+    "glob-watcher": "0.0.8",
+    "lodash": "^3.5.0"
   }
 }

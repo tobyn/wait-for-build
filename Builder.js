@@ -1,138 +1,156 @@
 "use strict";
 
+var slice = Array.prototype.slice;
+
+var FRESH = 1,
+    STALE = 2,
+    BUILDING = 3,
+    BUILDING_STALE = 4;
+
 module.exports = Builder;
 
-function Builder(task, eager, log) {
-  this.task = task;
-  this.eager = eager;
-  this.log = log;
+/*
+ * Builders run tasks to execute builds. Each Builder manages a single
+ * task, and will only allow one build to be in progress at a time.
+ *
+ * Builders ensure that callbacks passed to `wait` are only called once
+ * a build finishes that was started after the most recent call to
+ * `rebuild` prior to the `wait`.
+ */
+function Builder(task, eager, debug) {
+  var cancelTask,
+      currentBuildCallbacks,
+      lastResult,
+      nextBuildCallbacks,
+      state;
+
+  if (!debug) debug = function noop() { };
 
   if (eager)
-    this.startBuild([]);
+    startBuild([]);
   else
-    this.state = "stale";
-}
+    state = STALE;
 
-Builder.prototype = {
-  rebuild: function() {
-    switch (this.state) {
-      case "fresh":
-        if (this.eager) {
-          this.startBuild([]);
+  this.rebuild = rebuild;
+  this.wait = wait;
+
+
+  function rebuild() {
+    switch (state) {
+      case FRESH:
+        if (eager) {
+          startBuild([]);
         } else {
-          this.log.debug("Rebuilding on the next request");
-          this.state = "stale";
+          state = STALE;
         }
 
         break;
 
-      case "building":
-        this.state = "building stale";
+      case BUILDING:
+        state = BUILDING_STALE;
 
-        if (this.eager && this.cancelTask)
-          this.cancelBuild();
+        if (eager && cancelTask)
+          cancelBuild();
 
         break;
     }
-  },
+  }
 
-  wait: function(callback) {
-    switch (this.state) {
-      case "fresh":
-        this.log.debug("No build needed");
-        callback(this.lastError);
+  function wait(callback) {
+    switch (state) {
+      case FRESH:
+        debug("No build needed");
+        callback.apply(null,lastResult);
         break;
 
-      case "stale":
-        this.startBuild([callback]);
+      case STALE:
+        startBuild([callback]);
         break;
 
-      case "building":
-        this.log.debug("Waiting on build in progress");
-        this.currentBuildCallbacks.push(callback);
+      case BUILDING:
+        debug("Waiting on build in progress");
+        currentBuildCallbacks.push(callback);
         break;
 
-      case "building stale":
-        this.log.debug("Waiting on the next build");
+      case BUILDING_STALE:
+        debug("Waiting on the next build");
 
-        if (this.cancelTask)
-          this.cancelBuild();
+        if (cancelTask)
+          cancelBuild();
 
-        var callbacks = this.nextBuildCallbacks;
-        if (callbacks)
-          callbacks.push(callback);
+        if (nextBuildCallbacks)
+          nextBuildCallbacks.push(callback);
         else
-          this.nextBuildCallbacks = [callback];
+          nextBuildCallbacks = [callback];
 
         break;
     }
-  },
+  }
 
 
-  startBuild: function(callbacks) {
-    this.state = "building";
+  function startBuild(callbacks) {
+    state = BUILDING;
+    lastResult = null;
+    currentBuildCallbacks = callbacks;
 
-    this.log.debug("Starting a build");
+    debug("Starting a build");
 
-    delete this.lastError;
+    cancelTask = task(finishedBuild.bind(null,callbacks));
+  }
 
-    this.currentBuildCallbacks = callbacks;
-    this.cancelTask = this.task(this.finishedBuild.bind(this,callbacks));
-  },
+  function cancelBuild() {
+    info("Canceling obsolete build");
 
-  cancelBuild: function() {
-    this.log.info("Canceling obsolete build");
-
-    var callbacks = this.currentBuildCallbacks;
-    this.cancelTask(this.canceledBuild.bind(this,callbacks));
-    delete this.cancelTask;
-  },
+    cancelTask(canceledBuild.bind(null,currentBuildCallbacks));
+    cancelTask = null;
+  }
 
 
-  canceledBuild: function(callbacks) {
-    if (callbacks !== this.currentBuildCallbacks) return;
+  function canceledBuild(callbacks) {
+    if (callbacks !== currentBuildCallbacks) return;
+    currentBuildCallbacks = null;
 
-    this.log.debug("Build has been canceled");
+    debug("Build has been canceled");
 
-    delete this.currentBuildCallbacks;
+    nextBuild(callbacks);
+  }
 
-    this.nextBuild(callbacks);
-  },
+  function finishedBuild(callbacks) {
+    if (callbacks !== currentBuildCallbacks) return;
 
-  finishedBuild: function(callbacks, err) {
-    if (callbacks !== this.currentBuildCallbacks) return;
-
-    delete this.cancelTask;
-    delete this.currentBuildCallbacks;
+    currentBuildCallbacks = null;
+    cancelTask = null;
 
     var len = callbacks.length;
     if (len > 0)
-      this.log.debug(callbacks.length,"wait(s) complete");
+      debug(callbacks.length,"wait(s) fulfilled");
 
+    var result = slice.call(arguments,1);
     callbacks.forEach(function(callback) {
-      callback(err);
+      callback.apply(null,result);
     });
 
-    if (this.state === "building") {
-      this.state = "fresh";
-      this.lastError = err;
-      this.log.debug("Build is ready");
-    } else if (this.eager || this.nextBuildCallbacks) {
-      this.log.debug("Obsolete build finished");
-      this.nextBuild();
+    if (state === BUILDING) {
+      state = FRESH;
+      lastResult = result;
+      debug("Build is ready");
+    } else if (eager || nextBuildCallbacks) {
+      debug("Obsolete build finished");
+      nextBuild();
     }
-  },
-
-  nextBuild: function(callbacks) {
-    var nbc = this.nextBuildCallbacks;
-    if (nbc)
-      delete this.nextBuildCallbacks;
-    else
-      nbc = [];
-
-    if (callbacks)
-      nbc = callbacks.concat(nbc);
-
-    this.startBuild(nbc);
   }
-};
+
+  function nextBuild(callbacks) {
+    if (callbacks)
+      callbacks = callbacks.concat(nextBuildCallbacks || []);
+    else if (nextBuildCallbacks)
+      callbacks = nextBuildCallbacks;
+    else
+      callbacks = [];
+
+    if (nextBuildCallbacks)
+      nextBuildCallbacks = null;
+
+    startBuild(callbacks);
+  }
+}
