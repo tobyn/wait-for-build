@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "glob-watcher": "0.0.8",
-    "lodash": "^3.5.0"
+    "lodash": "^3.5.0",
+    "strip-ansi": "^2.0.1"
   }
 }

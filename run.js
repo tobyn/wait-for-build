@@ -4,8 +4,8 @@ var defaults = require("lodash/object/defaults"),
     last = require("lodash/array/last"),
     rest = require("lodash/array/rest"),
     spawn = require("child_process").spawn,
-    watchGlob = require("glob-watcher"),
-    normalizeOptions = require("./common").normalizeOptions,
+    trimRight = require("lodash/string/trimRight"),
+    popOptions = require("./common").popOptions,
     Builder = require("./Builder");
 
 module.exports = factory;
@@ -14,46 +14,29 @@ module.exports.run = run;
 
 function factory(command/*, args..., [options] */) {
   var args = rest(arguments),
-      options = last(args);
-
-  if (typeof options !== "object")
-    options = {};
-  else
-    args.pop();
-
-  options = normalizeOptions(options);
+      options = popOptions(args);
 
   var debug = options.debug,
       log = debug.bind(null,"(" + command + ")"),
       task = run.bind(null,command,args,log),
       builder = new Builder(task,options.eager,debug),
-      rebuild = builder.rebuild;
+      rebuild = builder.rebuild,
+      wait = builder.wait;
 
-  if (options.watch) {
-    watchGlob(options.watch,function() {
-      debug("Watched files changed");
-      rebuild();
-    });
+  middleware.wait = wait;
+  middleware.rebuild = rebuild;
 
-    return justWait.bind(null,builder.wait);
-  } else {
-    return rebuildThenWait.bind(null,rebuild,builder.wait);
+  return middleware;
+
+  function middleware(req, res, next) {
+    rebuild();
+    wait(next);
   }
-}
-
-function justWait(wait, req, res, next) {
-  wait(next);
-}
-
-function rebuildThenWait(rebuild, wait, req, res, next) {
-  rebuild();
-  wait(next);
 }
 
 
 function run(command, args, log, callback) {
   var output = [],
-      writeOutput = output.push.bind(output),
       env = process.env,
       envPath = env.PATH;
 
@@ -69,10 +52,10 @@ function run(command, args, log, callback) {
   });
 
   child.stdout.setEncoding("utf8");
-  child.stdout.on("data",writeOutput);
+  child.stdout.on("data",writeOut);
 
   child.stderr.setEncoding("utf8");
-  child.stderr.on("data",writeOutput);
+  child.stderr.on("data",writeErr);
 
   child.on("exit",exit);
   
@@ -95,5 +78,25 @@ function run(command, args, log, callback) {
       err.stack = output.join("");
       callback(err);
     }
+  }
+
+  function writeErr(data) {
+    writeIO("err:",data);
+  }
+
+  function writeOut(data) {
+    writeIO("out:",data);
+  }
+
+  function writeIO(prefix, data) {
+    var lines = data.split("\n");
+    if (!last(lines).trim())
+      lines.pop();
+
+    lines.forEach(function(line) {
+      log(prefix,trimRight(line));
+    });
+
+    output.push(data);
   }
 }

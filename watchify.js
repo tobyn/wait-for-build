@@ -1,6 +1,7 @@
 "use strict";
 
 var defaults = require("lodash/object/defaults"),
+    stripAnsi = require("strip-ansi"),
     normalizeOptions = require("./common").normalizeOptions,
     Builder = require("./Builder");
 
@@ -39,19 +40,10 @@ function factory(browserify, watchify, configure, options) {
   function middleware(req, res, next) {
     wait(function(err, buf) {
       if (err)
-        next(err);
+        next(decolorize(err));
       else
-        sendJS(res, buf);
+        sendJS(res,buf);
     });
-  }
-
-  function sendJS(res, buf) {
-    res.writeHead(200,{
-      "Content-Type": "application/javascript",
-      "Content-Length": buf.length
-    });
-
-    res.end(buf);
   }
 
 
@@ -73,4 +65,21 @@ function factory(browserify, watchify, configure, options) {
     debug("Module changes:",ids.join(", "));
     rebuild();
   }
+}
+
+function decolorize(err) {
+  var stack = err.stack;
+  if (stack)
+    err.stack = stripAnsi(stack);
+
+  return err;
+}
+
+function sendJS(res, buf) {
+  res.writeHead(200,{
+    "Content-Type": "application/javascript",
+    "Content-Length": buf.length
+  });
+
+  res.end(buf);
 }
