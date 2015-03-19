@@ -14,8 +14,8 @@ function watch(/* globs..., [options] */) {
 
   var watcher = watchGlobs(globs);
 
-  watcher.on("change",function() {
-    debug("Watched files changed");
+  watcher.on("change",function(evt) {
+    debug("File changed:",evt.path);
   });
 
   return middlewareFactory.bind(null,watcher);
