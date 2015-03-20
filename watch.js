@@ -1,9 +1,12 @@
 "use strict";
 
-var flattenDeep = require("lodash/array/flatten"),
+var defaults = require("lodash/object/defaults"),
+    flattenDeep = require("lodash/array/flattenDeep"),
     last = require("lodash/array/last"),
     watchGlobs = require("glob-watcher"),
-    popOptions = require("./common").popOptions;
+    common = require("./common"),
+    normalizeOptions = common.normalizeOptions,
+    popOptions = common.popOptions;
 
 module.exports = watch;
 
@@ -18,17 +21,22 @@ function watch(/* globs..., [options] */) {
     debug("File changed:",evt.path);
   });
 
-  return middlewareFactory.bind(null,watcher);
+  return middlewareFactory.bind(null,watcher,options);
 }
 
-function middlewareFactory(watcher, builder) {
+function middlewareFactory(watcher, defaultOptions, builder, options) {
   var rebuild = builder.rebuild,
       wait = builder.wait;
 
-  watcher.on("change",rebuild);
+  options = normalizeOptions(defaults(options,defaultOptions));
+
+  watcher.on("change",rebuild.bind(builder,options.eager));
 
   middleware.wait = wait;
   middleware.rebuild = rebuild;
+
+  if (options.eager)
+    rebuild(true);
 
   return middleware;
 

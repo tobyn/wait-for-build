@@ -22,9 +22,10 @@ function factory(browserify, watchify, configure, options) {
   options = normalizeOptions(options);
 
   var debug = options.debug,
+      eager = options.eager,
       bify = configure(browserifyProxy),
       wify = watchify(bify),
-      builder = new Builder(bundle,options.eager,debug),
+      builder = new Builder(bundle,debug),
       rebuild = builder.rebuild,
       wait = builder.wait;
 
@@ -33,6 +34,9 @@ function factory(browserify, watchify, configure, options) {
   wify.on("bytes",function(bytes) {
     debug("Bundle generated (" + bytes,"bytes)");
   });
+
+  middleware.wait = builder.wait;
+  middleware.rebuild = builder.rebuild;
 
   return middleware;
 
@@ -63,7 +67,7 @@ function factory(browserify, watchify, configure, options) {
 
   function updated(ids) {
     debug("Module changes:",ids.join(", "));
-    rebuild();
+    rebuild(eager);
   }
 }
 

@@ -19,7 +19,7 @@ function factory(command/*, args..., [options] */) {
   var debug = options.debug,
       log = debug.bind(null,"(" + command + ")"),
       task = run.bind(null,command,args,log),
-      builder = new Builder(task,options.eager,debug),
+      builder = new Builder(task,debug),
       rebuild = builder.rebuild,
       wait = builder.wait;
 

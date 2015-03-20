@@ -17,40 +17,51 @@ module.exports = Builder;
  * a build finishes that was started after the most recent call to
  * `rebuild` prior to the `wait`.
  */
-function Builder(task, eager, debug) {
+function Builder(task, debug) {
   var cancelTask,
       currentBuildCallbacks,
-      lastResult,
+      cachedResult,
       nextBuildCallbacks,
-      state;
+      state = STALE;
 
   if (!debug) debug = function noop() { };
-
-  if (eager)
-    startBuild([]);
-  else
-    state = STALE;
 
   this.rebuild = rebuild;
   this.wait = wait;
 
 
-  function rebuild() {
+  function rebuild(eager) {
     switch (state) {
       case FRESH:
-        if (eager) {
+        if (eager)
           startBuild([]);
-        } else {
+        else
           state = STALE;
-        }
+
+        break;
+
+      case STALE:
+        if (eager)
+          startBuild([]);
 
         break;
 
       case BUILDING:
         state = BUILDING_STALE;
 
-        if (eager && cancelTask)
-          cancelBuild();
+        if (eager) {
+          if (!nextBuildCallbacks)
+            nextBuildCallbacks = [];
+
+          if (cancelTask)
+            cancelBuild();
+        }
+
+        break;
+
+      case BUILDING_STALE:
+        if (eager && !nextBuildCallbacks)
+          nextBuildCallbacks = [];
 
         break;
     }
@@ -60,7 +71,7 @@ function Builder(task, eager, debug) {
     switch (state) {
       case FRESH:
         debug("No build needed");
-        callback.apply(null,lastResult);
+        callback.apply(null,cachedResult);
         break;
 
       case STALE:
@@ -90,7 +101,7 @@ function Builder(task, eager, debug) {
 
   function startBuild(callbacks) {
     state = BUILDING;
-    lastResult = null;
+    cachedResult = null;
     currentBuildCallbacks = callbacks;
 
     debug("Starting a build");
@@ -99,7 +110,7 @@ function Builder(task, eager, debug) {
   }
 
   function cancelBuild() {
-    info("Canceling obsolete build");
+    debug("Canceling obsolete build");
 
     cancelTask(canceledBuild.bind(null,currentBuildCallbacks));
     cancelTask = null;
@@ -123,7 +134,7 @@ function Builder(task, eager, debug) {
 
     var len = callbacks.length;
     if (len > 0)
-      debug(callbacks.length,"wait(s) fulfilled");
+      debug(len,"wait(s) fulfilled");
 
     var result = slice.call(arguments,1);
     callbacks.forEach(function(callback) {
@@ -132,9 +143,9 @@ function Builder(task, eager, debug) {
 
     if (state === BUILDING) {
       state = FRESH;
-      lastResult = result;
+      cachedResult = result;
       debug("Build is ready");
-    } else if (eager || nextBuildCallbacks) {
+    } else if (nextBuildCallbacks) {
       debug("Obsolete build finished");
       nextBuild();
     }
