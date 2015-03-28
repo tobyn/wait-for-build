@@ -5,12 +5,6 @@ var defaults = require("lodash/object/defaults"),
     normalizeOptions = require("./common").normalizeOptions,
     Builder = require("./Builder");
 
-var REQUIRED_BROWSERIFY_OPTIONS = {
-  cache: {},
-  packageCache: {},
-  fullPaths: true
-};
-
 module.exports = initialize;
 
 
@@ -54,8 +48,10 @@ function factory(browserify, watchify, configure, options) {
   function browserifyProxy(options) {
     if (Array.isArray(options))
       options = { entries: options };
+    else if (typeof options !== "object")
+      options = { entries: [options] };
 
-    defaults(options,REQUIRED_BROWSERIFY_OPTIONS);
+    options = defaults({},options,watchify.args);
 
     return browserify(options);
   }
