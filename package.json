@@ -1,14 +1,15 @@
 {
   "name": "wait-for-build",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "Middleware for building assets on demand.",
   "author": "Tobyn Baugher <tobynb@gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/tobyn/wait-for-build.git"
   },
   "dependencies": {
-    "glob-watcher": "0.0.8",
-    "lodash": "^3.5.0",
+    "glob-watcher": "2.0.0",
+    "lodash": "^3.6.0",
     "strip-ansi": "^2.0.1"
   }
 }
