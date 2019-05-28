@@ -8,8 +8,8 @@
     "url": "https://github.com/tobyn/wait-for-build.git"
   },
   "dependencies": {
-    "glob-watcher": "2.0.0",
-    "lodash": "^3.6.0",
+    "glob-watcher": "^5.0.3",
+    "lodash": "^4.17.11",
     "strip-ansi": "^2.0.1"
   }
 }
