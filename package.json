@@ -1,6 +1,6 @@
 {
   "name": "wait-for-build",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Middleware for building assets on demand.",
   "author": "Tobyn Baugher <tobynb@gmail.com>",
   "repository": {
